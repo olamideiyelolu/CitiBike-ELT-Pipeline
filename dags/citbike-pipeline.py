@@ -2,6 +2,7 @@ from airflow.sdk import dag, task, chain
 from pendulum import datetime
 from datetime import timedelta
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from airflow.providers.snowflake.transfers.copy_into_snowflake import CopyFromExternalStageToSnowflakeOperator
 import requests
 import zipfile
 import io
@@ -95,18 +96,21 @@ def citibike_elt_pipeline():
             "files": uploaded_files
         }
 
-    @task
-    def load_data(extract_result):
-        """
-        Loads data from AWS S3 bucket into Snowflake
-        """
-        print(f"Data extracted to bucket: {extract_result['bucket']}")
-        print(f"Total files uploaded: {extract_result['files_uploaded']}")
-        # TODO: Add Snowflake loading logic here
-        return extract_result
+    # Load data from S3 to Snowflake using CopyFromExternalStageToSnowflakeOperator
+    load_into_warehouse = CopyFromExternalStageToSnowflakeOperator(
+        task_id="load_data",
+        snowflake_conn_id="snowflake_conn",
+        table="raw_trips",
+        stage="my_citibike_stage",
+        pattern=".*[.]csv",
+        schema="citibike_schema",
+        database="citibike_db",
+        warehouse="citibike_wh",
+        file_format="(type = 'CSV', field_delimiter = ',', skip_header = 1, field_optionally_enclosed_by = '\"')",
+    )
 
     # Define task dependencies
-    chain(extract_data())
+    load_into_warehouse
 
 # Instantiate the DAG
 citibike_elt_pipeline()
