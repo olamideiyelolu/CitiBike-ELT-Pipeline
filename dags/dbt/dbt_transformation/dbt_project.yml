@@ -1,0 +1,29 @@
+name: dbt_transformation
+version: "1.0.0"
+config-version: 2
+
+profile: dbt_transformation
+
+seed-paths: ["seeds"]
+model-paths: ["models"]
+macro-paths: ["macros"]
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+seeds:
+  # Builds seeds into '<your_schema_name>_raw'
+  dbt_transformation:
+    +schema: raw
+
+models:
+  dbt_transformation:
+    # Materialize staging models as views, and marts as tables
+    staging:
+      +materialized: view
+      +target_lag: downstream
+      +snowflake_warehouse: citibike_wh
+    warehouse:
+      +materialized: table
+      +target_lag: downstream
+      +snowflake_warehouse: citibike_wh

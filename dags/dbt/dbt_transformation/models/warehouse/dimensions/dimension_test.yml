@@ -1,0 +1,13 @@
+models:
+  - name: dim_station
+    columns:
+      - name: station_sk
+        data_tests:
+          - unique
+          - not_null
+  - name: dim_date
+    columns:
+      - name: date_sk
+        data_tests:
+          - unique
+          - not_null

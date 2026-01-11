@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: citibike_trips
+    database: citibike_db
+    schema: citibike_schema
+    tables:
+      - name: raw_trips
+        columns:
+          - name: ride_id
+            tests:
+              - not_null
+              - unique
