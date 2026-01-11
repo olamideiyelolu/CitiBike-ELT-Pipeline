@@ -3,9 +3,12 @@ from pendulum import datetime
 from datetime import timedelta
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.snowflake.transfers.copy_into_snowflake import CopyFromExternalStageToSnowflakeOperator
+from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig
+from cosmos.profiles import SnowflakeUserPasswordProfileMapping
 import requests
 import zipfile
 import io
+from pathlib import Path
 
 doc_md_DAG = """
 This DAG is a pipeline that extracts data from the Citibike API and loads it into an S3 bucket.
@@ -21,6 +24,23 @@ The DAG is composed of the following tasks:
 S3_BUCKET_NAME = "my-citibike-tripdataa"  # Change this to your desired bucket name
 DATA_URL = "https://s3.amazonaws.com/tripdata/2023-citibike-tripdata.zip"
 
+# This gets the directory where your dag.py is located
+DAG_FOLDER = Path(__file__).parent
+
+# This points to the dbt folder inside that same directory
+DBT_PROJECT_PATH = "/usr/local/airflow/dags/dbt/dbt_transformation"
+DBT_EXECUTABLE_PATH = "/usr/local/airflow/dbt_venv/bin/dbt"
+profile_config = ProfileConfig(
+    profile_name="default",
+    target_name="dev",
+    profile_mapping=SnowflakeUserPasswordProfileMapping(
+        conn_id="snowflake_conn",
+        profile_args={"database": "citibike_db", "schema": "citibike_schema"},
+    ),
+)
+execution_config = ExecutionConfig(
+    dbt_executable_path=DBT_EXECUTABLE_PATH
+)
 
 @dag(
     "Citibike-ELT-Pipeline",
@@ -109,8 +129,19 @@ def citibike_elt_pipeline():
         file_format="(type = 'CSV', field_delimiter = ',', skip_header = 1, field_optionally_enclosed_by = '\"')",
     )
 
+    transform_data = DbtTaskGroup(
+        group_id="transform_data",
+        project_config=ProjectConfig(DBT_PROJECT_PATH),
+        profile_config=profile_config,
+        execution_config=execution_config,
+        operator_args={
+            "emit_datasets": True, 
+        },
+        default_args={"retries":2}
+    )
+
     # Define task dependencies
-    load_into_warehouse
+    extract_data() >> load_into_warehouse >> transform_data
 
 # Instantiate the DAG
 citibike_elt_pipeline()
