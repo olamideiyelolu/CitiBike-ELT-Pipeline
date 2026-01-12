@@ -27,4 +27,5 @@ This pipeline implements an ELT workflow orchestrated with **Astronomer/Airflow*
 4. `cd` into the repo.
 5. Run `astro dev start` to spin up **Airflow**.
 6. In the **Airflow UI**, enter connection logins for **Snowflake** and **AWS**.
+7. In the **Snowflake UI** run the script in `include\snowflake_script` to prepare snowflake
 7. Run the DAG in the **Airflow UI**.
